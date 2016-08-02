@@ -3,11 +3,14 @@ package com.daijia.library;
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.support.v4.view.ViewCompat;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.EditText;
 import android.widget.PopupWindow;
 
@@ -20,10 +23,17 @@ public class KeyboardHelper {
 
     private EditText mTargetEditText;
     private PopupWindow mKeyboardPopupWindow;
-    private View rootView;
+    private ViewGroup rootView;
+    private int[] mPopupWindowLocation = new int[2];
+    private int mInputType;
+
     public KeyboardHelper(Activity activity,EditText targetEdit){
         mTargetEditText = targetEdit;
-        rootView = activity.findViewById(android.R.id.content);
+        rootView = (ViewGroup) activity.findViewById(android.R.id.content);
+        mInputType = targetEdit.getInputType();
+        mTargetEditText.setInputType(InputType.TYPE_NULL);
+        mTargetEditText.setTextIsSelectable(true);
+
     }
 
     public void setContentView(View contentView){
@@ -40,7 +50,13 @@ public class KeyboardHelper {
     }
 
     private PopupWindow createPopupWindow(View contentView){
-        PopupWindow popupWindow = new PopupWindow(mTargetEditText.getContext());
+        PopupWindow popupWindow = new PopupWindow(mTargetEditText.getContext()){
+            @Override
+            public void dismiss() {
+                super.dismiss();
+                translateAnimation(0,0);
+            }
+        };
         popupWindow.setContentView(contentView);
         popupWindow.setWidth(ViewGroup.LayoutParams.MATCH_PARENT);
         popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -57,24 +73,45 @@ public class KeyboardHelper {
            return;
         }
 
-        int inputType = mTargetEditText.getInputType();
-        mTargetEditText.setInputType(InputType.TYPE_NULL);
         mKeyboardPopupWindow.showAtLocation(rootView, Gravity.BOTTOM,0,0);
-        mTargetEditText.setInputType(inputType);
 
         hookPopupOnTouchEvent();
+    }
+
+    void translateAnimation(int x,int y){
+        ViewCompat.animate(rootView.getChildAt(0)).x(x).y(y).setDuration(200).start();
     }
 
     private void hookPopupOnTouchEvent(){
         try {
             Field field = PopupWindow.class.getDeclaredField("mDecorView");
             field.setAccessible(true);
-            View decorView = (View) field.get(mKeyboardPopupWindow);
+            final View decorView = (View) field.get(mKeyboardPopupWindow);
+
+            decorView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+                @Override
+                public boolean onPreDraw() {
+
+                    decorView.getLocationOnScreen(mPopupWindowLocation);
+                    int[] editLoc = new int[2];
+                    mTargetEditText.getLocationOnScreen(editLoc);
+
+                    if(editLoc[1]+mTargetEditText.getMeasuredHeight()>mPopupWindowLocation[1]){
+                        translateAnimation(0,mPopupWindowLocation[1]-(editLoc[1]+(int)1.5f*mTargetEditText.getMeasuredHeight()));
+                    }
+
+                    mTargetEditText.setInputType(mInputType);
+                    decorView.getViewTreeObserver().removeOnPreDrawListener(this);
+                    return false;
+                }
+            });
+
             decorView.setOnTouchListener(new View.OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
                     int[] decorLoc = new int[2];
                     v.getLocationOnScreen(decorLoc);
+
 
                     final int x = (int) event.getX();
                     final int y = decorLoc[1] + (int) event.getY();
@@ -87,12 +124,11 @@ public class KeyboardHelper {
 
                         int[] loc = getTargetEditTextLocation();
 
-                        if(x>loc[0]&&x<loc[0]+editWidth
-                                &&y>loc[0]&&y<loc[1]+editHeight){
+                        if((x>loc[0]&&x<loc[0]+editWidth)
+                                &&(y>loc[1]&&y<loc[1]+editHeight)){
                             setTargetEditTextSelection(x-loc[0], y-loc[0]);
                         }else {
                             dismiss();
-
                         }
 
                         return true;

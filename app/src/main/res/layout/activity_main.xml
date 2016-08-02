@@ -9,6 +9,7 @@
         android:id="@+id/edit_text"
         android:layout_width="match_parent"
         android:layout_height="60dp"
+        android:layout_alignParentBottom="true"
         android:digits="0123456789xX"/>
 
 
