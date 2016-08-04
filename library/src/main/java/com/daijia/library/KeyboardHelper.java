@@ -1,6 +1,7 @@
 package com.daijia.library;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.support.v4.view.ViewCompat;
@@ -11,9 +12,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.PopupWindow;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 
 /**
@@ -26,6 +29,7 @@ public class KeyboardHelper {
     private ViewGroup rootView;
     private int[] mPopupWindowLocation = new int[2];
     private int mInputType;
+    private WeakReference<Activity> weakReference;
 
     public KeyboardHelper(Activity activity,EditText targetEdit){
         mTargetEditText = targetEdit;
@@ -33,7 +37,7 @@ public class KeyboardHelper {
         mInputType = targetEdit.getInputType();
         mTargetEditText.setInputType(InputType.TYPE_NULL);
         mTargetEditText.setTextIsSelectable(true);
-
+        weakReference = new WeakReference<>(activity);
     }
 
     public void setContentView(View contentView){
@@ -42,6 +46,24 @@ public class KeyboardHelper {
         mTargetEditText.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+
+                Activity activity = weakReference.get();
+
+                if(activity!=null){
+                    View focus = activity.getCurrentFocus();
+
+                    if(focus!=null){
+                        InputMethodManager imm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+
+                        focus.clearFocus();
+                    }
+
+                }
+
+
+
+
                 showKeyboard();
 
                 return false;
