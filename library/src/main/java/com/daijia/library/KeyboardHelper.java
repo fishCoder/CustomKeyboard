@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.os.Build;
 import android.support.v4.view.ViewCompat;
 import android.text.InputType;
 import android.util.Log;
@@ -81,6 +82,7 @@ public class KeyboardHelper {
         };
         popupWindow.setContentView(contentView);
         popupWindow.setWidth(ViewGroup.LayoutParams.MATCH_PARENT);
+        popupWindow.setHeight(ViewGroup.LayoutParams.WRAP_CONTENT);
         popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popupWindow.setTouchable(true);
         popupWindow.setFocusable(true);
@@ -106,7 +108,13 @@ public class KeyboardHelper {
 
     private void hookPopupOnTouchEvent(){
         try {
-            Field field = PopupWindow.class.getDeclaredField("mDecorView");
+            Field field;
+            if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
+                field = PopupWindow.class.getDeclaredField("mDecorView");
+            }else {
+                field = PopupWindow.class.getDeclaredField("mPopupView");
+            }
+
             field.setAccessible(true);
             final View decorView = (View) field.get(mKeyboardPopupWindow);
 
